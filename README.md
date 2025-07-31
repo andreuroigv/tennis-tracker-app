@@ -43,4 +43,4 @@ tennis-tracker-app/
 
 ## 🧠 Autor
 
-Desarrollado por [Andreu Roig](https://github.com/andreuroigv) con asistencia de ChatGPT.
+Desarrollado por [Andreu Roig](https://github.com/andreuroigv).

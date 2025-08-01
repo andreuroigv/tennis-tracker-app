@@ -1,80 +1,69 @@
 
-import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
+import streamlit as st
+import plotly.express as px
+from datetime import datetime
 
-st.set_page_config(page_title="Tracker de Apuestas de Tenis", layout="wide")
+st.set_page_config(page_title="Tennis Tracker", layout="wide")
+st.title("🎾 Seguimiento de Apuestas de Tenis")
 
-st.title("🎾 Tracker de Apuestas de Tenis")
-st.markdown("Visualización semanal de rendimiento")
-
-# Cargar datos
+# Leer datos
 @st.cache_data
 def cargar_datos():
-    df = pd.read_excel("tracker_resultados.xlsx")
-    df["Fecha"] = pd.to_datetime(df["Fecha"])
-    df["Semana"] = df["Fecha"].dt.to_period("W").apply(lambda r: r.start_time)
-    return df
+    try:
+        df = pd.read_excel("tracker_resultados.xlsx")
+        df["fecha"] = pd.to_datetime(df["fecha"])
+        return df
+    except:
+        st.warning("No se pudo cargar el archivo tracker_resultados.xlsx")
+        return pd.DataFrame()
 
 df = cargar_datos()
 
-# Filtros
-jugadores = sorted(set(df["Partido"].str.split(" vs ").explode()))
-jugador = st.sidebar.selectbox("Filtrar por jugador", ["Todos"] + jugadores)
-semanas = df["Semana"].drop_duplicates().sort_values()
-semana_ini, semana_fin = st.sidebar.select_slider(
-    "Selecciona rango de semanas",
-    options=semanas,
-    value=(semanas.min(), semanas.max())
-)
+if df.empty:
+    st.stop()
 
-df_filtrado = df[(df["Semana"] >= semana_ini) & (df["Semana"] <= semana_fin)]
+# Filtros
+st.sidebar.header("Filtros")
+fecha_inicio = st.sidebar.date_input("Desde", value=df["fecha"].min().date())
+fecha_fin = st.sidebar.date_input("Hasta", value=df["fecha"].max().date())
+jugador = st.sidebar.selectbox("Filtrar por jugador", ["Todos"] + sorted(set(df["jugador_A"]) | set(df["jugador_B"])))
+
+filtro = (df["fecha"] >= pd.to_datetime(fecha_inicio)) & (df["fecha"] <= pd.to_datetime(fecha_fin))
 if jugador != "Todos":
-    df_filtrado = df_filtrado[df_filtrado["Partido"].str.contains(jugador)]
+    filtro &= (df["jugador_A"] == jugador) | (df["jugador_B"] == jugador)
+
+df_filtrado = df[filtro].copy()
+
+# Métricas agregadas por semana
+df_filtrado["semana"] = df_filtrado["fecha"].dt.to_period("W").dt.start_time
+resumen = df_filtrado.dropna(subset=["profit"]).groupby("semana").agg(
+    apuestas=("profit", "count"),
+    aciertos=("resultado", lambda x: (x == "Acierto").sum()),
+    fallos=("resultado", lambda x: (x == "Fallo").sum()),
+    unidades=("profit", "sum")
+).reset_index()
+resumen["yield"] = resumen["unidades"] / resumen["apuestas"]
 
 # KPIs
-total_picks = len(df_filtrado)
-aciertos = df_filtrado[df_filtrado["Resultado"] == "Acierto"].shape[0]
-fallo = df_filtrado[df_filtrado["Resultado"] == "Fallo"].shape[0]
-profit_total = df_filtrado["Profit"].sum()
-yield_total = profit_total / total_picks * 100 if total_picks > 0 else 0
-tasa_acierto = aciertos / total_picks * 100 if total_picks > 0 else 0
+total_apuestas = resumen["apuestas"].sum()
+total_unidades = resumen["unidades"].sum()
+yield_total = total_unidades / total_apuestas if total_apuestas else 0
+aciertos_totales = resumen["aciertos"].sum()
+fallos_totales = resumen["fallos"].sum()
 
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("🎯 Total de picks", total_picks)
-col2.metric("✅ % de acierto", f"{tasa_acierto:.1f}%")
-col3.metric("💵 Profit total", f"{profit_total:.2f} unidades")
-col4.metric("📈 Yield acumulado", f"{yield_total:.2f}%")
+col1.metric("🎯 Apuestas totales", total_apuestas)
+col2.metric("✅ Aciertos", aciertos_totales)
+col3.metric("💸 Unidades ganadas", round(total_unidades, 2))
+col4.metric("📈 Yield acumulado", f"{round(100 * yield_total, 2)}%")
 
-# Tabla
-st.subheader("📋 Detalle de picks")
-st.dataframe(df_filtrado.sort_values("Fecha", ascending=False), use_container_width=True)
+# Gráfico
+fig = px.bar(resumen, x="semana", y=["unidades", "yield"], barmode="group",
+             labels={"value": "Métrica", "variable": "Indicador"}, title="📊 Resultados semanales")
+fig.update_layout(xaxis_title="Semana", yaxis_title="Valor")
+st.plotly_chart(fig, use_container_width=True)
 
-# Gráficos
-st.subheader("📊 Evolución semanal")
-
-resumen = df_filtrado.groupby("Semana").agg({
-    "Profit": "sum"
-}).rename(columns={"Profit": "Unidades ganadas"})
-
-resumen["Yield semanal (%)"] = (
-    df_filtrado.groupby("Semana")["Profit"].sum() / 
-    df_filtrado.groupby("Semana").size()
-) * 100
-
-fig, ax1 = plt.subplots(figsize=(10, 5))
-
-color1 = "tab:blue"
-ax1.set_xlabel("Semana")
-ax1.set_ylabel("Unidades ganadas", color=color1)
-ax1.bar(resumen.index, resumen["Unidades ganadas"], color=color1, alpha=0.6)
-ax1.tick_params(axis="y", labelcolor=color1)
-
-ax2 = ax1.twinx()
-color2 = "tab:green"
-ax2.set_ylabel("Yield semanal (%)", color=color2)
-ax2.plot(resumen.index, resumen["Yield semanal (%)"], color=color2, marker="o")
-ax2.tick_params(axis="y", labelcolor=color2)
-
-fig.tight_layout()
-st.pyplot(fig)
+# Mostrar tabla
+st.subheader("📋 Historial de apuestas")
+st.dataframe(df_filtrado.sort_values("fecha", ascending=False), use_container_width=True)

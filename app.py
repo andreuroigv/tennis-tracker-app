@@ -55,12 +55,11 @@ profit_factor = ganancias / perdidas if perdidas else float("inf")
 aciertos_totales = resumen["aciertos"].sum()
 fallos_totales = resumen["fallos"].sum()
 
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3, col4, col5 = st.columns(5)
 col1.metric("🎯 Apuestas totales", total_apuestas)
 col2.metric("✅ Aciertos", aciertos_totales)
 col3.metric("💸 Unidades ganadas", round(total_unidades, 2))
 col4.metric("📈 Yield acumulado", f"{round(100 * yield_total, 2)}%")
-col5 = st.columns(5)[4]
 col5.metric("📊 Profit Factor", round(profit_factor, 2) if profit_factor != float("inf") else "∞")
 
 # Gráfico

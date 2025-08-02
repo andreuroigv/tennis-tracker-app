@@ -63,9 +63,50 @@ col4.metric("📈 Yield acumulado", f"{round(100 * yield_total, 2)}%")
 col5.metric("📊 Profit Factor", round(profit_factor, 2) if profit_factor != float("inf") else "∞")
 
 # Gráfico
-fig = px.bar(resumen, x="semana", y=["unidades", "yield"], barmode="group",
-             labels={"value": "Métrica", "variable": "Indicador"}, title="📊 Resultados semanales")
-fig.update_layout(xaxis_title="Semana", yaxis_title="Valor")
+import plotly.graph_objects as go
+
+# Agrupar por semana
+df_filtrado["semana"] = pd.to_datetime(df_filtrado["fecha"]).dt.to_period("W").apply(lambda r: r.start_time)
+resumen_semanal = df_filtrado.groupby("semana").agg({
+    "profit": "sum",
+    "cuota": "count"
+}).reset_index()
+
+resumen_semanal["yield"] = resumen_semanal["profit"] / resumen_semanal["cuota"]
+resumen_semanal["unidades"] = resumen_semanal["profit"]
+resumen_semanal["yield_acumulado"] = resumen_semanal["yield"].cumsum()
+
+# Gráfico mixto
+fig = go.Figure()
+
+# Barras: unidades por semana
+fig.add_trace(go.Bar(
+    x=resumen_semanal["semana"],
+    y=resumen_semanal["unidades"],
+    name="Unidades ganadas",
+    yaxis="y1"
+))
+
+# Línea: yield acumulado
+fig.add_trace(go.Scatter(
+    x=resumen_semanal["semana"],
+    y=resumen_semanal["yield_acumulado"],
+    name="Yield acumulado",
+    yaxis="y2",
+    mode="lines+markers"
+))
+
+# Layout
+fig.update_layout(
+    title="📈 Evolución semanal",
+    xaxis_title="Semana",
+    yaxis=dict(title="Unidades", side="left"),
+    yaxis2=dict(title="Yield acumulado", overlaying="y", side="right"),
+    legend=dict(x=0.01, y=0.99),
+    barmode="group",
+    height=500
+)
+
 st.plotly_chart(fig, use_container_width=True)
 
 # Mostrar tabla

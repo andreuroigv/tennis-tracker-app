@@ -7,6 +7,9 @@ from datetime import datetime
 st.set_page_config(page_title="Tennis Tracker", layout="wide")
 st.title("🎾 Seguimiento de Apuestas de Tenis")
 
+if st.button("🔁 Actualizar datos"):
+    st.cache_data.clear()
+
 # Leer datos
 @st.cache_data
 def cargar_datos():

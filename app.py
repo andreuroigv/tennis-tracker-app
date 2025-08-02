@@ -49,6 +49,9 @@ resumen["yield"] = resumen["unidades"] / resumen["apuestas"]
 total_apuestas = resumen["apuestas"].sum()
 total_unidades = resumen["unidades"].sum()
 yield_total = total_unidades / total_apuestas if total_apuestas else 0
+ganancias = df_filtrado[df_filtrado["profit"] > 0]["profit"].sum()
+perdidas = -df_filtrado[df_filtrado["profit"] < 0]["profit"].sum()
+profit_factor = ganancias / perdidas if perdidas else float("inf")
 aciertos_totales = resumen["aciertos"].sum()
 fallos_totales = resumen["fallos"].sum()
 
@@ -57,6 +60,8 @@ col1.metric("🎯 Apuestas totales", total_apuestas)
 col2.metric("✅ Aciertos", aciertos_totales)
 col3.metric("💸 Unidades ganadas", round(total_unidades, 2))
 col4.metric("📈 Yield acumulado", f"{round(100 * yield_total, 2)}%")
+col5 = st.columns(5)[4]
+col5.metric("📊 Profit Factor", round(profit_factor, 2) if profit_factor != float("inf") else "∞")
 
 # Gráfico
 fig = px.bar(resumen, x="semana", y=["unidades", "yield"], barmode="group",
@@ -66,4 +71,4 @@ st.plotly_chart(fig, use_container_width=True)
 
 # Mostrar tabla
 st.subheader("📋 Historial de apuestas")
-st.dataframe(df_filtrado.sort_values("fecha", ascending=False), use_container_width=True)
+st.dataframe(df_filtrado.drop(columns=["event_id"]).sort_values("fecha", ascending=False), use_container_width=True)

@@ -62,7 +62,7 @@ col1, col2, col3, col4, col5 = st.columns(5)
 col1.metric("🎯 Apuestas totales", total_apuestas)
 col2.metric("✅ Aciertos", aciertos_totales)
 col3.metric("💸 Unidades ganadas", round(total_unidades, 2))
-col4.metric("📈 Yield acumulado", f"{round(100 * yield_total, 2)}%")
+col4.metric("📈 Yield", f"{round(100 * yield_total, 2)}%")
 col5.metric("📊 Profit Factor", round(profit_factor, 2) if profit_factor != float("inf") else "∞")
 
 # Gráfico
@@ -77,7 +77,9 @@ resumen_semanal = df_filtrado.groupby("semana").agg({
 
 resumen_semanal["yield"] = resumen_semanal["profit"] / resumen_semanal["cuota"]
 resumen_semanal["unidades"] = resumen_semanal["profit"]
-resumen_semanal["yield_acumulado"] = resumen_semanal["yield"].cumsum() * 100  # en porcentaje
+resumen_semanal["apuestas"] = resumen_semanal["cuota"]
+resumen_semanal["yield_acumulado"] = (resumen_semanal["unidades"].cumsum() / resumen_semanal["apuestas"].cumsum()) * 100
+
 
 # Gráfico combinado
 fig = go.Figure()
@@ -94,7 +96,7 @@ fig.add_trace(go.Bar(
 fig.add_trace(go.Scatter(
     x=resumen_semanal["semana"],
     y=resumen_semanal["yield_acumulado"],
-    name="Yield acumulado (%)",
+    name="Yield (%)",
     yaxis="y2",
     mode="lines+markers"
 ))
@@ -110,7 +112,7 @@ fig.update_layout(
         zeroline=True
     ),
     yaxis2=dict(
-        title="Yield acumulado (%)",
+        title="Yield (%)",
         side="right",
         overlaying="y",
         showgrid=False,

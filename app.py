@@ -68,7 +68,7 @@ col5.metric("📊 Profit Factor", round(profit_factor, 2) if profit_factor != fl
 # Gráfico
 import plotly.graph_objects as go
 
-# Agrupar por semana
+# Agrupación por semana
 df_filtrado["semana"] = pd.to_datetime(df_filtrado["fecha"]).dt.to_period("W").apply(lambda r: r.start_time)
 resumen_semanal = df_filtrado.groupby("semana").agg({
     "profit": "sum",
@@ -77,12 +77,12 @@ resumen_semanal = df_filtrado.groupby("semana").agg({
 
 resumen_semanal["yield"] = resumen_semanal["profit"] / resumen_semanal["cuota"]
 resumen_semanal["unidades"] = resumen_semanal["profit"]
-resumen_semanal["yield_acumulado"] = resumen_semanal["yield"].cumsum()
+resumen_semanal["yield_acumulado"] = resumen_semanal["yield"].cumsum() * 100  # en porcentaje
 
-# Gráfico mixto
+# Gráfico combinado
 fig = go.Figure()
 
-# Barras: unidades por semana
+# Unidades ganadas (barras)
 fig.add_trace(go.Bar(
     x=resumen_semanal["semana"],
     y=resumen_semanal["unidades"],
@@ -90,11 +90,11 @@ fig.add_trace(go.Bar(
     yaxis="y1"
 ))
 
-# Línea: yield acumulado
+# Yield acumulado (línea)
 fig.add_trace(go.Scatter(
     x=resumen_semanal["semana"],
     y=resumen_semanal["yield_acumulado"],
-    name="Yield acumulado",
+    name="Yield acumulado (%)",
     yaxis="y2",
     mode="lines+markers"
 ))
@@ -103,15 +103,21 @@ fig.add_trace(go.Scatter(
 fig.update_layout(
     title="📈 Evolución semanal",
     xaxis_title="Semana",
-    yaxis=dict(title="Unidades", side="left"),
-    yaxis2=dict(title="Yield acumulado", overlaying="y", side="right"),
+    yaxis=dict(
+        title="Unidades",
+        side="left",
+        showgrid=False,
+        zeroline=True
+    ),
+    yaxis2=dict(
+        title="Yield acumulado (%)",
+        side="right",
+        overlaying="y",
+        showgrid=False,
+        zeroline=True
+    ),
     legend=dict(x=0.01, y=0.99),
-    barmode="group",
     height=500
 )
 
 st.plotly_chart(fig, use_container_width=True)
-
-# Mostrar tabla
-st.subheader("📋 Historial de apuestas")
-st.dataframe(df_filtrado.drop(columns=["event_id"]).sort_values("fecha", ascending=False), use_container_width=True)

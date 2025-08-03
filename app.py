@@ -121,3 +121,11 @@ fig.update_layout(
 )
 
 st.plotly_chart(fig, use_container_width=True)
+
+# -------------------------
+# Tabla de historial detallado
+# -------------------------
+st.subheader("📋 Historial completo de apuestas")
+columnas_a_mostrar = ["fecha", "jugador_A", "jugador_B", "pronostico", "cuota", "resultado", "profit"]
+df_ordenado = df_filtrado.sort_values("fecha", ascending=False)[columnas_a_mostrar]
+st.dataframe(df_ordenado, use_container_width=True)

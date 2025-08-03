@@ -68,23 +68,23 @@ col5.metric("📊 Profit Factor", round(profit_factor, 2) if profit_factor != fl
 # Gráfico
 import plotly.graph_objects as go
 
-# Agrupación por semana
-df_filtrado["semana"] = pd.to_datetime(df_filtrado["fecha"]).dt.to_period("W").apply(lambda r: r.start_time)
-resumen_semanal = df_filtrado.groupby("semana").agg({
+# Solo apuestas validadas
+df_validadas = df_filtrado.dropna(subset=["profit"]).copy()
+df_validadas["semana"] = pd.to_datetime(df_validadas["fecha"]).dt.to_period("W").apply(lambda r: r.start_time)
+
+resumen_semanal = df_validadas.groupby("semana").agg({
     "profit": "sum",
     "cuota": "count"
 }).reset_index()
 
-resumen_semanal["yield"] = resumen_semanal["profit"] / resumen_semanal["cuota"]
 resumen_semanal["unidades"] = resumen_semanal["profit"]
 resumen_semanal["apuestas"] = resumen_semanal["cuota"]
 resumen_semanal["yield_acumulado"] = (resumen_semanal["unidades"].cumsum() / resumen_semanal["apuestas"].cumsum()) * 100
 
-
-# Gráfico combinado
+# Gráfico mixto
 fig = go.Figure()
 
-# Unidades ganadas (barras)
+# Barras: unidades ganadas
 fig.add_trace(go.Bar(
     x=resumen_semanal["semana"],
     y=resumen_semanal["unidades"],
@@ -92,33 +92,22 @@ fig.add_trace(go.Bar(
     yaxis="y1"
 ))
 
-# Yield acumulado (línea)
+# Línea: yield acumulado en %
 fig.add_trace(go.Scatter(
     x=resumen_semanal["semana"],
     y=resumen_semanal["yield_acumulado"],
-    name="Yield (%)",
+    name="Yield acumulado (%)",
     yaxis="y2",
     mode="lines+markers"
 ))
 
-# Layout
 fig.update_layout(
     title="📈 Evolución semanal",
     xaxis_title="Semana",
-    yaxis=dict(
-        title="Unidades",
-        side="left",
-        showgrid=False,
-        zeroline=True
-    ),
-    yaxis2=dict(
-        title="Yield (%)",
-        side="right",
-        overlaying="y",
-        showgrid=False,
-        zeroline=True
-    ),
+    yaxis=dict(title="Unidades", side="left"),
+    yaxis2=dict(title="Yield acumulado (%)", overlaying="y", side="right"),
     legend=dict(x=0.01, y=0.99),
+    barmode="group",
     height=500
 )
 

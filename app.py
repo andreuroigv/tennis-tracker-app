@@ -38,6 +38,9 @@ if jugador != "Todos":
 
 df_filtrado = df[filtro].copy()
 
+# Excluir apuestas anuladas del análisis
+df_filtrado = df_filtrado[df_filtrado["resultado"] != "Anulado"]
+
 # Métricas agregadas por semana
 df_filtrado["semana"] = df_filtrado["fecha"].dt.to_period("W").dt.start_time
 resumen = df_filtrado.dropna(subset=["profit"]).groupby("semana").agg(

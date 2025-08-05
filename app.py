@@ -98,6 +98,7 @@ resumen_mensual = resumen_mensual.drop(columns=["yield", "mes"])
 st.subheader("📆 Resumen mensual")
 st.dataframe(
     resumen_mensual.rename(columns={
+        "Mes": "Mes",
         "apuestas": "Apuestas",
         "aciertos": "Aciertos",
         "fallos": "Fallos",

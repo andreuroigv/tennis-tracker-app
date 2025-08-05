@@ -103,7 +103,7 @@ resumen_mensual = resumen_mensual.rename(columns={
     "aciertos": "Aciertos",
     "fallos": "Fallos",
     "unidades": "Unidades"
-})
+}))
 
 # Reordenar columnas para que Mes salga primero
 orden_columnas = ["Mes", "Apuestas", "Aciertos", "Fallos", "Unidades", "Yield"]

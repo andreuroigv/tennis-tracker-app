@@ -78,16 +78,25 @@ resumen_mensual = df_validadas.groupby("mes").agg(
 resumen_mensual["yield"] = resumen_mensual["unidades"] / resumen_mensual["apuestas"]
 
 st.subheader("📆 Resumen mensual")
+import locale
+locale.setlocale(locale.LC_TIME, 'es_ES.UTF-8')  # Para que los meses salgan en español
+
+# Formatear mes como nombre
+resumen_mensual["Mes"] = resumen_mensual["mes"].dt.strftime("%B")
+
+# Crear columna de Yield en porcentaje
+resumen_mensual["Yield"] = (resumen_mensual["yield"] * 100).round(2).astype(str) + "%"
+
+# Eliminar columna yield numérica
+resumen_mensual = resumen_mensual.drop(columns=["yield", "mes"])
+
+st.subheader("📆 Resumen mensual")
 st.dataframe(
-    resumen_mensual.assign(
-        yield_pct=lambda df: (df["yield"] * 100).round(2).astype(str) + "%"
-    ).rename(columns={
-        "mes": "Mes",
+    resumen_mensual.rename(columns={
         "apuestas": "Apuestas",
         "aciertos": "Aciertos",
         "fallos": "Fallos",
-        "unidades": "Unidades",
-        "yield_pct": "Yield"
+        "unidades": "Unidades"
     }),
     use_container_width=True
 )

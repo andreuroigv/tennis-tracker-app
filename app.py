@@ -129,14 +129,14 @@ resumen_mensual["yield"] = resumen_mensual["unidades"] / resumen_mensual["apuest
 st.subheader("📆 Resumen mensual")
 st.dataframe(
     resumen_mensual.assign(
-        yield=lambda df: (df["yield"] * 100).round(2).astype(str) + "%"
+        yield_pct=lambda df: (df["yield"] * 100).round(2).astype(str) + "%"
     ).rename(columns={
         "mes": "Mes",
         "apuestas": "Apuestas",
         "aciertos": "Aciertos",
         "fallos": "Fallos",
         "unidades": "Unidades",
-        "yield": "Yield"
+        "yield_pct": "Yield"
     }),
     use_container_width=True
 )

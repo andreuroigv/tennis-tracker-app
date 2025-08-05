@@ -68,53 +68,78 @@ col3.metric("💸 Unidades ganadas", round(total_unidades, 2))
 col4.metric("📈 Yield", f"{round(100 * yield_total, 2)}%")
 col5.metric("📊 Profit Factor", round(profit_factor, 2) if profit_factor != float("inf") else "∞")
 
-# Gráfico
+# -------------------------
+# Gráfico semanal (barras y acumuladas)
+# -------------------------
+df_validadas["semana"] = df_validadas["fecha"].dt.to_period("W").apply(lambda r: r.start_time)
+
+resumen_semanal = df_validadas.groupby("semana").agg(
+    unidades=("profit", "sum")
+).reset_index()
+
+resumen_semanal["unidades_acumuladas"] = resumen_semanal["unidades"].cumsum()
+
 import plotly.graph_objects as go
-
-# Solo apuestas validadas
-df_validadas = df_filtrado.dropna(subset=["profit"]).copy()
-df_validadas["semana"] = pd.to_datetime(df_validadas["fecha"]).dt.to_period("W").apply(lambda r: r.start_time)
-
-resumen_semanal = df_validadas.groupby("semana").agg({
-    "profit": "sum",
-    "cuota": "count"
-}).reset_index()
-
-resumen_semanal["unidades"] = resumen_semanal["profit"]
-resumen_semanal["apuestas"] = resumen_semanal["cuota"]
-resumen_semanal["yield_acumulado"] = (resumen_semanal["unidades"].cumsum() / resumen_semanal["apuestas"].cumsum()) * 100
-
-# Gráfico mixto
 fig = go.Figure()
 
-# Barras: unidades ganadas
+# Barras: unidades por semana
 fig.add_trace(go.Bar(
     x=resumen_semanal["semana"],
     y=resumen_semanal["unidades"],
-    name="Unidades ganadas",
+    name="Unidades semanales",
     yaxis="y1"
 ))
 
-# Línea: yield acumulado en %
+# Línea: unidades acumuladas
 fig.add_trace(go.Scatter(
     x=resumen_semanal["semana"],
-    y=resumen_semanal["yield_acumulado"],
-    name="Yield acumulado (%)",
+    y=resumen_semanal["unidades_acumuladas"],
+    name="Unidades acumuladas",
     yaxis="y2",
     mode="lines+markers"
 ))
 
 fig.update_layout(
-    title="📈 Evolución semanal",
+    title="📈 Evolución semanal de unidades",
     xaxis_title="Semana",
-    yaxis=dict(title="Unidades", side="left"),
-    yaxis2=dict(title="Yield acumulado (%)", overlaying="y", side="right"),
+    yaxis=dict(title="Unidades semanales", side="left"),
+    yaxis2=dict(title="Unidades acumuladas", overlaying="y", side="right"),
     legend=dict(x=0.01, y=0.99),
     barmode="group",
     height=500
 )
 
 st.plotly_chart(fig, use_container_width=True)
+
+# -------------------------
+# Tabla mensual con resumen
+# -------------------------
+df_validadas = df_filtrado.dropna(subset=["profit"]).copy()
+df_validadas["mes"] = df_validadas["fecha"].dt.to_period("M").dt.to_timestamp()
+
+resumen_mensual = df_validadas.groupby("mes").agg(
+    apuestas=("profit", "count"),
+    aciertos=("resultado", lambda x: (x == "Acierto").sum()),
+    fallos=("resultado", lambda x: (x == "Fallo").sum()),
+    unidades=("profit", "sum")
+).reset_index()
+
+resumen_mensual["yield"] = resumen_mensual["unidades"] / resumen_mensual["apuestas"]
+
+st.subheader("📆 Resumen mensual")
+st.dataframe(
+    resumen_mensual.assign(
+        yield=lambda df: (df["yield"] * 100).round(2).astype(str) + "%"
+    ).rename(columns={
+        "mes": "Mes",
+        "apuestas": "Apuestas",
+        "aciertos": "Aciertos",
+        "fallos": "Fallos",
+        "unidades": "Unidades",
+        "yield": "Yield"
+    }),
+    use_container_width=True
+)
 
 # -------------------------
 # Tabla de historial detallado

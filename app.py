@@ -64,6 +64,49 @@ col4.metric("📈 Yield", f"{round(100 * yield_total, 2)}%")
 col5.metric("📊 Profit Factor", round(profit_factor, 2) if profit_factor != float("inf") else "∞")
 
 # -------------------------
+# Tabla mensual con resumen
+# -------------------------
+df_validadas["mes"] = df_validadas["fecha"].dt.to_period("M").dt.to_timestamp()
+
+resumen_mensual = df_validadas.groupby("mes").agg(
+    apuestas=("profit", "count"),
+    aciertos=("resultado", lambda x: (x == "Acierto").sum()),
+    fallos=("resultado", lambda x: (x == "Fallo").sum()),
+    unidades=("profit", "sum")
+).reset_index()
+
+# Calcular yield antes de eliminar columnas
+resumen_mensual["yield"] = resumen_mensual["unidades"] / resumen_mensual["apuestas"]
+
+# Mapeo manual de meses al español
+meses_es = {
+    "January": "Enero", "February": "Febrero", "March": "Marzo",
+    "April": "Abril", "May": "Mayo", "June": "Junio",
+    "July": "Julio", "August": "Agosto", "September": "Septiembre",
+    "October": "Octubre", "November": "Noviembre", "December": "Diciembre"
+}
+
+# Formatear mes como nombre en español
+resumen_mensual["Mes"] = resumen_mensual["mes"].dt.strftime("%B").map(meses_es)
+
+# Crear columna de Yield en porcentaje
+resumen_mensual["Yield"] = (resumen_mensual["yield"] * 100).round(2).astype(str) + "%"
+
+# Eliminar columna yield numérica y mes original
+resumen_mensual = resumen_mensual.drop(columns=["yield", "mes"])
+
+st.subheader("📆 Resumen mensual")
+st.dataframe(
+    resumen_mensual.rename(columns={
+        "apuestas": "Apuestas",
+        "aciertos": "Aciertos",
+        "fallos": "Fallos",
+        "unidades": "Unidades"
+    }),
+    use_container_width=True
+)
+
+# -------------------------
 # Gráfico semanal (barras y acumuladas)
 # -------------------------
 df_validadas["semana"] = df_validadas["fecha"].dt.to_period("W").apply(lambda r: r.start_time)

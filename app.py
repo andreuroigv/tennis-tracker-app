@@ -97,15 +97,19 @@ resumen_mensual = resumen_mensual.drop(columns=["yield", "mes"])
 
 st.subheader("📆 Resumen mensual")
 st.dataframe(
-    resumen_mensual.rename(columns={
-        "Mes": "Mes",
-        "apuestas": "Apuestas",
-        "aciertos": "Aciertos",
-        "fallos": "Fallos",
-        "unidades": "Unidades"
-    }),
-    use_container_width=True
-)
+    # Renombrar columnas
+resumen_mensual = resumen_mensual.rename(columns={
+    "apuestas": "Apuestas",
+    "aciertos": "Aciertos",
+    "fallos": "Fallos",
+    "unidades": "Unidades"
+})
+
+# Reordenar columnas para que Mes salga primero
+orden_columnas = ["Mes", "Apuestas", "Aciertos", "Fallos", "Unidades", "Yield"]
+resumen_mensual = resumen_mensual[orden_columnas]
+
+st.dataframe(resumen_mensual, use_container_width=True)
 
 # -------------------------
 # Gráfico semanal (barras y acumuladas)

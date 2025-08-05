@@ -75,19 +75,21 @@ resumen_mensual = df_validadas.groupby("mes").agg(
     unidades=("profit", "sum")
 ).reset_index()
 
-resumen_mensual["yield"] = resumen_mensual["unidades"] / resumen_mensual["apuestas"]
+# Mapeo manual de meses al español
+meses_es = {
+    "January": "Enero", "February": "Febrero", "March": "Marzo",
+    "April": "Abril", "May": "Mayo", "June": "Junio",
+    "July": "Julio", "August": "Agosto", "September": "Septiembre",
+    "October": "Octubre", "November": "Noviembre", "December": "Diciembre"
+}
 
-st.subheader("📆 Resumen mensual")
-import locale
-locale.setlocale(locale.LC_TIME, 'es_ES.UTF-8')  # Para que los meses salgan en español
-
-# Formatear mes como nombre
-resumen_mensual["Mes"] = resumen_mensual["mes"].dt.strftime("%B")
+# Formatear mes como nombre en español
+resumen_mensual["Mes"] = resumen_mensual["mes"].dt.strftime("%B").map(meses_es)
 
 # Crear columna de Yield en porcentaje
 resumen_mensual["Yield"] = (resumen_mensual["yield"] * 100).round(2).astype(str) + "%"
 
-# Eliminar columna yield numérica
+# Eliminar columna yield numérica y mes original
 resumen_mensual = resumen_mensual.drop(columns=["yield", "mes"])
 
 st.subheader("📆 Resumen mensual")

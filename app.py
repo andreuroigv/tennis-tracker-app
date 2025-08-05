@@ -3,6 +3,7 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 from datetime import datetime
+import plotly.graph_objects as go
 
 st.set_page_config(page_title="Tennis Tracker", layout="wide")
 st.title("🎾 Seguimiento de Apuestas de Tenis")
@@ -41,25 +42,19 @@ df_filtrado = df[filtro].copy()
 # Excluir apuestas anuladas del análisis
 df_filtrado = df_filtrado[df_filtrado["resultado"] != "Anulado"]
 
-# Métricas agregadas por semana
-df_filtrado["semana"] = df_filtrado["fecha"].dt.to_period("W").dt.start_time
-resumen = df_filtrado.dropna(subset=["profit"]).groupby("semana").agg(
-    apuestas=("profit", "count"),
-    aciertos=("resultado", lambda x: (x == "Acierto").sum()),
-    fallos=("resultado", lambda x: (x == "Fallo").sum()),
-    unidades=("profit", "sum")
-).reset_index()
-resumen["yield"] = resumen["unidades"] / resumen["apuestas"]
-
+# -------------------------
 # KPIs
-total_apuestas = resumen["apuestas"].sum()
-total_unidades = resumen["unidades"].sum()
+# -------------------------
+df_validadas = df_filtrado.dropna(subset=["profit"]).copy()
+
+total_apuestas = df_validadas.shape[0]
+total_unidades = df_validadas["profit"].sum()
 yield_total = total_unidades / total_apuestas if total_apuestas else 0
-ganancias = df_filtrado[df_filtrado["profit"] > 0]["profit"].sum()
-perdidas = -df_filtrado[df_filtrado["profit"] < 0]["profit"].sum()
+ganancias = df_validadas[df_validadas["profit"] > 0]["profit"].sum()
+perdidas = -df_validadas[df_validadas["profit"] < 0]["profit"].sum()
 profit_factor = ganancias / perdidas if perdidas else float("inf")
-aciertos_totales = resumen["aciertos"].sum()
-fallos_totales = resumen["fallos"].sum()
+aciertos_totales = (df_validadas["resultado"] == "Acierto").sum()
+fallos_totales = (df_validadas["resultado"] == "Fallo").sum()
 
 col1, col2, col3, col4, col5 = st.columns(5)
 col1.metric("🎯 Apuestas totales", total_apuestas)
@@ -67,6 +62,35 @@ col2.metric("✅ Aciertos", aciertos_totales)
 col3.metric("💸 Unidades ganadas", round(total_unidades, 2))
 col4.metric("📈 Yield", f"{round(100 * yield_total, 2)}%")
 col5.metric("📊 Profit Factor", round(profit_factor, 2) if profit_factor != float("inf") else "∞")
+
+# -------------------------
+# Tabla mensual con resumen
+# -------------------------
+df_validadas["mes"] = df_validadas["fecha"].dt.to_period("M").dt.to_timestamp()
+
+resumen_mensual = df_validadas.groupby("mes").agg(
+    apuestas=("profit", "count"),
+    aciertos=("resultado", lambda x: (x == "Acierto").sum()),
+    fallos=("resultado", lambda x: (x == "Fallo").sum()),
+    unidades=("profit", "sum")
+).reset_index()
+
+resumen_mensual["yield"] = resumen_mensual["unidades"] / resumen_mensual["apuestas"]
+
+st.subheader("📆 Resumen mensual")
+st.dataframe(
+    resumen_mensual.assign(
+        yield_pct=lambda df: (df["yield"] * 100).round(2).astype(str) + "%"
+    ).rename(columns={
+        "mes": "Mes",
+        "apuestas": "Apuestas",
+        "aciertos": "Aciertos",
+        "fallos": "Fallos",
+        "unidades": "Unidades",
+        "yield_pct": "Yield"
+    }),
+    use_container_width=True
+)
 
 # -------------------------
 # Gráfico semanal (barras y acumuladas)
@@ -79,7 +103,6 @@ resumen_semanal = df_validadas.groupby("semana").agg(
 
 resumen_semanal["unidades_acumuladas"] = resumen_semanal["unidades"].cumsum()
 
-import plotly.graph_objects as go
 fig = go.Figure()
 
 # Barras: unidades por semana
@@ -110,36 +133,6 @@ fig.update_layout(
 )
 
 st.plotly_chart(fig, use_container_width=True)
-
-# -------------------------
-# Tabla mensual con resumen
-# -------------------------
-df_validadas = df_filtrado.dropna(subset=["profit"]).copy()
-df_validadas["mes"] = df_validadas["fecha"].dt.to_period("M").dt.to_timestamp()
-
-resumen_mensual = df_validadas.groupby("mes").agg(
-    apuestas=("profit", "count"),
-    aciertos=("resultado", lambda x: (x == "Acierto").sum()),
-    fallos=("resultado", lambda x: (x == "Fallo").sum()),
-    unidades=("profit", "sum")
-).reset_index()
-
-resumen_mensual["yield"] = resumen_mensual["unidades"] / resumen_mensual["apuestas"]
-
-st.subheader("📆 Resumen mensual")
-st.dataframe(
-    resumen_mensual.assign(
-        yield_pct=lambda df: (df["yield"] * 100).round(2).astype(str) + "%"
-    ).rename(columns={
-        "mes": "Mes",
-        "apuestas": "Apuestas",
-        "aciertos": "Aciertos",
-        "fallos": "Fallos",
-        "unidades": "Unidades",
-        "yield_pct": "Yield"
-    }),
-    use_container_width=True
-)
 
 # -------------------------
 # Tabla de historial detallado
